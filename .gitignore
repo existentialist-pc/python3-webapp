@@ -1,0 +1,5 @@
+# Python:
+*.pyc #忽略所有以.pyc结尾的文件
+test/ #忽略根目录下 test/文件夹下所有文件
+.idea
+
