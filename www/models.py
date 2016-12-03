@@ -1,10 +1,10 @@
-#数据库 实例类
+# 数据库 实例类
 
 import time, uuid
 from orm import Model, StringField, IntegerField, BooleanField, FloatField, TextField
 
 def next_id():
-    return '%015d%s000' % (int(time.time()*1000), uuid.uuid4().hex) #%015d 15位整数不足用0填充
+    return '%015d%s000' % (int(time.time()*1000), uuid.uuid4().hex)  # %015d 15位整数不足用0填充 return凑齐50位字符串，十六进制数
 
 class User(Model):
 
@@ -16,7 +16,7 @@ class User(Model):
     admin = BooleanField()
     name = StringField(ddl='varchar(50)')
     image = StringField(ddl='varchar(500)')
-    created_at = FloatField(default=time.time) #保存到数据库的时候调用
+    created_at = FloatField(default=time.time) # 保存到数据库的时候调用。save函数内的getValueOrDefault内 会执行default()。
 
 class Blog(Model):
 

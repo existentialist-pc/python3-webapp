@@ -23,14 +23,14 @@ def create_pool(loop, **kw): #只创建 global变量 不返回   init 中直接�
 
 @asyncio.coroutine
 def select(sql, args= None, size= None): #查询
-    logging.info(sql, args)
+    logging.info("SQL:'%s' args:'%s'" % (sql, args or []))
     with (yield from __pool) as conn:
         cur = yield from conn.cursor(aiomysql.DictCursor) #字典格式返回
         yield from cur.execute(sql.replace('?', '%s'), args or ())
         if size:
-            rs = cur.fetchmany(size)
+            rs = yield from cur.fetchmany(size)
         else:
-            rs = cur.fetchall()
+            rs = yield from cur.fetchall()
         yield from cur.close()
         logging.info('rows returned: %s' % len(rs))
     return rs
@@ -148,7 +148,7 @@ class Model(dict, metaclass= ModelMetaclass):
     def getValue(self, key):
         return getattr(self, key, None)
 
-    def getValueOrDefault(self, key):
+    def getValueOrDefault(self, key):  # 没有传递值的时候，Field中的default就起到传入默认值的作用。
         value = getattr(self, key, None)
         if value is None:
             field = self.__mappings__[key]
@@ -160,7 +160,7 @@ class Model(dict, metaclass= ModelMetaclass):
 
     @classmethod
     @asyncio.coroutine
-    def find(cls, pk): #找到pk对应key输出的结果
+    def find(cls, pk): #找到主键pk对应key输出的结果
         ' find object by primary key. '
         rs = yield from select('%s where `%s`=?' % (cls.__select__, cls.__primary_key__), [pk], 1)
         if len(rs) == 0:

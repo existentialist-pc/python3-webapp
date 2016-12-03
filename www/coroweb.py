@@ -50,7 +50,7 @@ class RequestHandler:
         if request.method == 'GET':
             qs = request.query_string
             if qs:
-                for k, v in urllib.parse.parse_qs(qs,True): #v是list类型
+                for k, v in urllib.parse.parse_qs(qs,True).items(): #v是list类型
                     req_kw[k] = v[0]
 
         #是否有特殊传参数
@@ -60,15 +60,15 @@ class RequestHandler:
 
         #根据需要传参
         required_args = inspect.signature(self._fn).parameters
-        kw = {arg: value for arg, value in req_kw if arg in required_args}
+        kw = {arg: value for arg, value in req_kw.items() if arg in required_args}
 
         #判断是否有未传参数
-        for k, v in required_args:
-            if k == 'request' and v.kind in (v.VAR_POSTION, v.VAR_KEYWORD):
+        for k, v in required_args.items():
+            if k == 'request' and v.kind in (v.VAR_POSITIONAL, v.VAR_KEYWORD):
                 return web.HTTPBadRequest('requst parameter cannot be the var argument')
-            if (v.default == v.empty) and (k not in kw) and (v.kind not in (v.VAR_POSTION, v.VAR_KEYWORD)):
+            if (v.default == v.empty) and (k not in kw) and (v.kind not in (v.VAR_POSTIONAL, v.VAR_KEYWORD)):
                 return web.HTTPBadRequest('missing argument: %s' % k)
-        logging.INFO('call with args: %s' % str(kw))
+        logging.info('call with args:%s' % str(kw))
 
         try:
             rs = yield from self._fn(**kw)
@@ -94,7 +94,7 @@ def add_routes(app, module_name): #把所有的路由处理函数和地址联系
             if callable(fn) and hasattr(fn, '__method__') and hasattr(fn, '__method__'):
                 method = getattr(fn, '__method__', None) #不要使用 fn.__method__暴力调用！
                 path = getattr(fn, '__route__', None)
-                app.router.add_router(method, path, RequestHandler(app,fn))
+                app.router.add_route(method, path, RequestHandler(app,fn))
                 args = ','.join(inspect.signature(fn).parameters.keys())
                 logging.info('add route %s %s => %s(%s)' % (method, path, fn.__name__, args))
 

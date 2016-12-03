@@ -1,3 +1,5 @@
+#!/usr/bin/env python3.5
+#
 #起到__init__函数的作用。
 import logging; logging.basicConfig(level=logging.INFO)
 
@@ -11,6 +13,7 @@ from jinja2 import Environment, FileSystemLoader
 import orm  #数据库操作
 from coroweb import add_routes, add_static
 
+from config_default import configs
 
 def init_jinja2(app, **kw):
     logging.info('init jinja2...')
@@ -75,6 +78,7 @@ def response_factory(app, handler):
     def response(request):
         logging.info('Response handler...')
         rs = yield from handler(request)
+        logging.info(type(rs)) # 页面异常时调试使用
         if isinstance(rs, web.StreamResponse): #包装好的web.数据类型 直接返回数据内容
             return rs
         if isinstance(rs, bytes):
@@ -94,7 +98,7 @@ def response_factory(app, handler):
                 resp.content_type = 'application/json;charset= utf-8'
                 return resp
             else: #调用template模板
-                resp = web.Response(body = app['__templating__'].get_template[template].render(**rs).encode('utf-8'))
+                resp = web.Response(body = app['__templating__'].get_template(template).render(**rs).encode('utf-8'))
                 resp.content_type= 'text/html;charset=utf-8'
                 return resp
         if isinstance(rs, int) and 100<= rs<=600:
@@ -115,11 +119,11 @@ def datetime_filter(t): #把整数时间解析成日常可接受形态
     if delta < 60:
         return u'1分钟前'
     if delta < 3600:
-        return u'%s分钟前' % delta//60
+        return u'%s分钟前' % (delta//60)
     if delta < 86400:
-        return u'%s小时前' % delta//3600
+        return u'%s小时前' % (delta//3600)
     if delta < 604800:
-        return u'%s天前' % delta//86400
+        return u'%s天前' % (delta//86400)
     dt = datetime.fromtimestamp(t)
     return u'%s年%s月%s日' %(dt.year, dt.month, dt.day)
 
@@ -133,12 +137,12 @@ def index(request):
 
 @asyncio.coroutine
 def init(loop):
-    yield from orm.create_pool(loop=loop ,host='127.0.0.1', port=3306, user='root', password='', db='python_app')
+    yield from orm.create_pool(loop=loop ,**configs['db'])
     #核心是执行 yield from aiomysql.create_pool()
     app = web.Application(loop=loop, middlewares=[logger_factory, response_factory])
     init_jinja2(app, filters=dict(datetime= datetime_filter))
-    app.router.add_route('GET','/',index)
-    #add_routes(app,'handlers')
+    #app.router.add_route('GET','/',index)
+    add_routes(app,'handlers')
     add_static(app)
     srv = yield from loop.create_server(app.make_handler(),'127.0.0.1',9000)
     logging.info('server started at http://127.0.0.1:9000...')
