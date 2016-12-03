@@ -100,7 +100,7 @@ def add_routes(app, module_name): #把所有的路由处理函数和地址联系
 
 def add_static(app): #不传需要的参数,以本文件路径 为基准 找到 static配置文件位置。
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'static') #根据该文件位置修改。 getcwd()不能传参！
-    app.route.add_route('/static/', path)
+    app.router.add_static('/static/', path)
     logging.info('add static %s => %s' % ('/static/', path))
 
 

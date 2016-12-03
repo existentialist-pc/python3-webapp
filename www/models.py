@@ -10,7 +10,7 @@ class User(Model):
 
     __table__ = 'users'
 
-    id = StringField( ddl = 'varchar(50)', primary_key = True, default = None)
+    id = StringField(ddl = 'varchar(50)', primary_key = True, default = next_id)
     email = StringField(ddl='varchar(50)')
     passwd = StringField(ddl='varchar(50)')
     admin = BooleanField()
