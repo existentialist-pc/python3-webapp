@@ -38,21 +38,21 @@ def select(sql, args= None, size= None): #查询
 
 @asyncio.coroutine
 def execute(sql, args= None, autocommit= True): #传参 autocommit=True 控制 提交方式。
-    logging.info(sql, args)
+    logging.info("SQL:'%s' args:'%s'" % (sql, args or []))
     with (yield from __pool) as conn:
-        cur = yield from conn.cursor()
         if not autocommit:
             yield from conn.begin() #?有这个语法？
         try:
+            cur = yield from conn.cursor()
             yield from cur.execute(sql.replace('?', '%s'), args or ())
             affected = cur.rowcount #返回受影响的行数值
             if not autocommit:
                 yield from conn.commit()
         except BaseException as e:
             yield from conn.rollback() #不知道有没有这个
-            raise
+            raise e
         yield from cur.close()
-        return affected
+    return affected
 
 
 
@@ -69,27 +69,27 @@ class Field(object):
 
 class StringField(Field):
 
-    def __init__(self, name = None, ddl = 'varchar(100)', primary_key = False, default = None):
+    def __init__(self, name = None, ddl = 'varchar(100)', primary_key = False, default = ''):
         super().__init__(name, ddl, primary_key, default)
 
 class IntegerField(Field):
 
-    def __init__(self, name = None, ddl = 'bigint(10)', primary_key = False, default = None):
+    def __init__(self, name = None, ddl = 'bigint(10)', primary_key = False, default = 0):
         super().__init__(name, ddl, primary_key, default)
 
 class BooleanField(Field):
 
-    def __init__(self, name = None, ddl = 'boolean', default = None):
+    def __init__(self, name = None, ddl = 'boolean', default = False):
         super().__init__(name, ddl, False, default)
 
 class FloatField(Field):
 
-    def __init__(self, name = None, ddl = 'real', primary_key = False, default = None):
+    def __init__(self, name = None, ddl = 'real', primary_key = False, default = 0.0):
         super().__init__(name, ddl, primary_key, default)
 
 class TextField(Field):
 
-    def __init__(self, name = None, ddl = 'text', default = None):
+    def __init__(self, name = None, ddl = 'text', default = ''):
         super().__init__(name, ddl, False, default)
 
 class ModelMetaclass(type):
@@ -127,7 +127,7 @@ class ModelMetaclass(type):
         attrs['__select__'] = 'select `%s`, %s from `%s`' % (primaryKey, ', '.join(escaped_fields), tableName)
         attrs['__update__'] = 'update `%s` set %s where `%s`=?' % (tableName, ','.join(list(map(lambda f: '`%s`=?' % (mappings.get(f).name or f), fields))), primaryKey)
         attrs['__delete__'] = 'delete from `%s` where `%s`=?' % (tableName, primaryKey)
-        attrs['__insert__'] = 'insert into `%s` (%s, `%s`) value (%s)' % (tableName, ', '.join(escaped_fields), primaryKey, ', '.join(list(map(lambda f: '?', fields))))
+        attrs['__insert__'] = 'insert into `%s` (%s, `%s`) values (%s, ?)' % (tableName, ', '.join(escaped_fields), primaryKey, ', '.join(list(map(lambda f: '?', fields))))
         return type.__new__(cls, name, bases, attrs)
 
 
@@ -206,9 +206,7 @@ class Model(dict, metaclass= ModelMetaclass):
             else:
                 raise ValueError('Invalid limit value: %s' % str(limit)) #防止limit是tuple出错
         rs = yield from select(' '.join(sql), args)
-        if len(rs) == 0:
-            return None
-        return [cls(**r) for r in rs]
+        return [cls(**r) for r in rs]  # 如果 rs为[]则 该值也返回[],不能加None判断，如果加，后续len(None)python会报错。
 
     @asyncio.coroutine
     def save(self):

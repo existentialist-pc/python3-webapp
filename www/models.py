@@ -13,7 +13,7 @@ class User(Model):
     id = StringField(ddl = 'varchar(50)', primary_key = True, default = next_id)
     email = StringField(ddl='varchar(50)')
     passwd = StringField(ddl='varchar(50)')
-    admin = BooleanField()
+    admin = BooleanField(default = False)
     name = StringField(ddl='varchar(50)')
     image = StringField(ddl='varchar(500)')
     created_at = FloatField(default=time.time) # 保存到数据库的时候调用。save函数内的getValueOrDefault内 会执行default()。

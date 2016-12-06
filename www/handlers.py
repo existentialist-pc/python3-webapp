@@ -6,8 +6,9 @@ import time
 from config import configs
 import hashlib
 from aiohttp import web
+import re
 from apis import APIValueError, APIResourceNotFoundError, APIError
-
+import json
 
 '''
 
@@ -21,16 +22,16 @@ def index(request):
     }
 '''
 
-COOKIE_NAME = 'awesession'
+COOKIE_NAME = 'session'
 _COOKIE_KEY = configs.session.secret
 
 _RE_EMAIL = re.compile(r'^[0-9a-z\.\-\_]+\@[0-9a-z\-\_]+(\.[0-9a-z\-\_]+){1,4}$')
-_RE_SHA1 = re.compile(r'[0-9a-f]{40}^$')
+_RE_SHA1 = re.compile(r'^[0-9a-f]{40}$')
 
 def user2cookie(user, max_age):
     expires = str(int(time.time() + max_age))
     s = '%s-%s-%s-%s' % (user.id, user.passwd, expires, _COOKIE_KEY)  # id-密码-时效-服务器保密参数
-    L = [user.id, expires, hashlib.sha1(s.encode('utf-8'))
+    L = [user.id, expires, hashlib.sha1(s.encode('utf-8')).hexdigest()]
     return '-'.join(L)  # passwd为用户输入值，JS检验email:password后sha1，再POST进python与id:passwd后sha1，最后得到的值传入sql。
 
 @asyncio.coroutine
@@ -42,13 +43,13 @@ def cookie2user(cookie_str):
         if len(L) != 3:
             return None
         uid, expires, sha1 = L
-        if int(expire) < time.time():  # 验证时效！别总忘了类型转换。
+        if int(expires) < time.time():  # 验证时效！别总忘了类型转换。
             return None
         user = yield from User.find(uid)
         if not user:
             return None
         s = '%s-%s-%s-%s' % (user.id, user.passwd, expires, _COOKIE_KEY)
-        if sha1 != hashlib.sha1(s.encode('utf-8'):
+        if sha1 != hashlib.sha1(s.encode('utf-8')).hexdigest():
             logging.info('invalid sha1')
             return None
         user.passwd = '******'
@@ -89,12 +90,33 @@ def signin(request):
 
 @get('/signout')
 def signout(request):  # 登录状态的本质是服务器产生或获得确认有效cookie；退出本质是改变客户端持有的原有cookie，验证失效。
-    return pass
+    referer = request.headers.get('referer')
+    r = web.HTTPFound(referer)
+    r.set_cookie(COOKIE_NAME, '-deleted-', max_age=0, httponly=True)
+    logging.info('user signed out.')
+    return r
 
 @asyncio.coroutine
 @post('/api/authenticate')
-def api_authenticate()  # 以用户密码验证登录。当然，登录的实质是之后以cookie进入该网站。
-    return pass
+def api_authenticate(*, email, passwd):  # 以用户密码验证登录。当然，登录的实质是之后以cookie进入该网站。
+    if not email or not _RE_EMAIL.match(email):
+        raise APIValueError('email', 'Invalid email.')
+    if not passwd or not _RE_SHA1.match(passwd):
+        raise APIValueError('passwd', 'Invalid password.')
+    users = yield from User.findAll('email=?', [email])
+    if len(users) != 1:
+        raise APIValueError('email', 'Email not exist.')
+    user = users[0]
+    sha1_testpwd = '%s:%s' % (user.id, passwd)
+    if user.passwd != hashlib.sha1(sha1_testpwd.encode('utf-8')).hexdigest():
+        raise APIValueError('passwd', 'Invalid password.')
+
+    r = web.Response()
+    r.set_cookie(COOKIE_NAME, user2cookie(user, 86400), max_age=86400, httponly=True)
+    user.passwd = '******'
+    r.content_type = 'application/json'
+    r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')
+    return r
 
 @asyncio.coroutine
 @post('/api/users')
@@ -106,7 +128,7 @@ def api_register_user(*, email, name, passwd):  # 要记得email要从原始获�
     if not passwd or not _RE_SHA1.match(passwd):
         raise APIValueError('passwd')
     users = yield from User.findAll('email=?', [email])
-    if len(users)>0:
+    if len(users) > 0:
         raise APIError('register: failed', 'email', 'Email is already in use.')
     uid = next_id()
     sha1_passwd = '%s:%s' % (uid, passwd)
@@ -118,5 +140,5 @@ def api_register_user(*, email, name, passwd):  # 要记得email要从原始获�
     r.set_cookie(COOKIE_NAME, user2cookie(user, 86400), max_age=86400, httponly=True)
     user.passwd = '******'
     r.content_type = 'application/json'
-    r.body = json.dumps(users, ensure_ascii=False).encode('utf-8')
+    r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')
     return r

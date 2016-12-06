@@ -6,10 +6,10 @@
     <title>{% block title %}<!--block title--> {% endblock %} - written in Python</title>
     <link rel="stylesheet" href="/static/css/uikit.min.css">
     <link rel="stylesheet" href="/static/css/uikit.gradient.min.css">
-    <link rel="stylesheet" href="/static/css/awesome.css">
     <script src="/static/js/jquery.min.js"></script>
-    <script src="/static/js/md5.js"></script>
+    <script src="/static/js/vue.min.js"></script>
     <script src="/static/js/uikit.min.js"></script>
+    <script src="/static/js/sha1.min.js"></script>
     <script src="/static/js/awesome.js"></script>
     {% block beforehead %}<!--block head--> {% endblock %}
 </head>
@@ -49,7 +49,7 @@
         </div>
     </div>
 
-    <div class="uk-margin-large-top" style="backgroud-color:#eee; border-top:1px solid #ccc;"><!--页脚链接声明等-->
+    <div class="uk-margin-large-top" style="background-color:#eee; border-top:1px solid #ccc;"><!--页脚链接声明等-->
         <div class="uk-container uk-container-center uk-text-center">
             <div class="uk-panel uk-margin-top uk-margin-bottom"> <!--思考为什么有三层div-->
                 <p>
@@ -59,7 +59,7 @@
                     <a target="_blank" href="#" class="uk-icon-button uk-icon-twitter"></a>
                 </p>
                 <p>Powered by <a href="#">Python Webapp</a>. Copyright &copy;2016.[<a href="/manage/" target="_blank">Manage</a>]</p>
-                <p><a href="http://www.liaoxuefeng.com/" target="_blank">www.liaoxuefeng.com</a>.All rights reserved.</p>
+                <p><a href="http://localhost:9000/" target="_blank">localhost</a>.All rights reserved.</p>
                 <a target="_blank" href="#"><i class="uk-icon-html5" style="font-size:64px; color: #444;"></i></a>
             </div>
         </div>

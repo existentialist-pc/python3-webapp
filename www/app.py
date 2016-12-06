@@ -12,8 +12,8 @@ from jinja2 import Environment, FileSystemLoader
 
 import orm  #数据库操作
 from coroweb import add_routes, add_static
-
 from config_default import configs
+from handlers import cookie2user,  COOKIE_NAME
 
 def init_jinja2(app, **kw):
     logging.info('init jinja2...')
@@ -41,8 +41,10 @@ def logger_factory(app, handler):
     @asyncio.coroutine
     def logger(request): #类似于 装饰器， 用logger把handler包装。
         logging.info('Response: %s:%s' % (request.method, request.path))
+
         return (yield from handler(request))
     return logger
+
 
 @asyncio.coroutine
 def data_factory(app, handler):
@@ -53,12 +55,12 @@ def data_factory(app, handler):
             if not request.content_type:
                 return web.HTTPBadRequest('Missing Content-Type.')
             content_type = request.content_type.lower()
-            if content_type.startwith('application/json'):
+            if content_type.startswith('application/json'):
                 request.__data__= yield from request.json()
                 if not isinstance(request.__data__, dict):
                     return web.HTTPBadRequest('JSON body must be object.')
                 logging.info('request json: %s' % request.__data__)
-            elif content_type.startwith(('application/x-wwW-form-urlencoded', 'multipart/form-data')):
+            elif content_type.startswith(('application/x-wwW-form-urlencoded', 'multipart/form-data')):
                 request.__data = yield from dict(**request.post())
                 logging.info('request form: %s' % request.__data__)
             else:
@@ -78,7 +80,7 @@ def response_factory(app, handler):
     def response(request):
         logging.info('Response handler...')
         rs = yield from handler(request)
-        logging.info(type(rs)) # 页面异常时调试使用
+        # logging.info(type(rs)) # 页面异常时调试使用
         if isinstance(rs, web.StreamResponse): #包装好的web.数据类型 直接返回数据内容
             return rs
         if isinstance(rs, bytes):
@@ -113,6 +115,22 @@ def response_factory(app, handler):
         return resp
     return response
 
+@asyncio.coroutine
+def auth_factory(app, handler):
+    @asyncio.coroutine
+    def auth(request):
+        cookies = request.cookies.get(COOKIE_NAME)
+        if cookies:
+            user = yield from cookie2user(cookies)
+            if user:
+                rs = yield from handler(request)
+                if isinstance(rs, dict):
+                    rs['user'] = user
+                    logging.info('cookie onloaded. username: %s' % user.name)
+                    return rs
+        return (yield from handler(request))
+    return auth
+
 
 def datetime_filter(t): #把整数时间解析成日常可接受形态
     delta = int(time.time()-t)
@@ -139,7 +157,7 @@ def index(request):
 def init(loop):
     yield from orm.create_pool(loop=loop ,**configs['db'])
     #核心是执行 yield from aiomysql.create_pool()
-    app = web.Application(loop=loop, middlewares=[logger_factory, response_factory])
+    app = web.Application(loop=loop, middlewares=[logger_factory, response_factory, auth_factory])
     init_jinja2(app, filters=dict(datetime= datetime_filter))
     #app.router.add_route('GET','/',index)
     add_routes(app,'handlers')

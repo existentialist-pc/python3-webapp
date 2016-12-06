@@ -39,11 +39,11 @@ class RequestHandler:
             if not request.content_type:
                 return web.HTTPBadRequest('Missing Content-Type.')
             content_type = request.content_type.lower()
-            if content_type.startwith('application/json'):
+            if content_type.startswith('application/json'):
                 req_kw = yield from request.json()
                 if not isinstance(req_kw, dict):
                     return web.HTTPBadRequest('JSON body must be object.')
-            elif content_type.startwith(('application/x-wwW-form-urlencoded','multipart/form-data')):
+            elif content_type.startswith(('application/x-wwW-form-urlencoded','multipart/form-data')):
                 req_kw = yield from dict(**request.post())
             else:
                 return web.HTTPBadRequest('Unsupported Content-Type: %s' % request.content_type)
@@ -71,7 +71,7 @@ class RequestHandler:
         logging.info('call with args:%s' % str(kw))
 
         try:
-            rs = yield from self._fn(**kw)
+            rs = yield from self._fn(**kw)  # 这里执行handlers，获得结果返回
             return rs
         except:# APIError as e:
             return 0 #dict(error = e.error, data = e.data, message = e.message)
