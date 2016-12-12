@@ -5,6 +5,7 @@
 {% block beforehead %}
 
     <script>
+        var referer = '{{ referer }}'
         function validateEmail(email){
             var re = /^[0-9a-z\-\_\.]+\@[0-9a-z\-\_]+(\.[0-9a-z\-\_]+){1,4}$/;
             return re.test(email.toLowerCase());
@@ -43,7 +44,7 @@
                             },
                             function(err, r){
                                 if (err){ return $form.showFormError(err);}
-                                return location.assign('/');
+                                return location.assign(referer);
                             }
                         );
                     }

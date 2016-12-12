@@ -6,9 +6,9 @@
     <title>{% block title %}<!--block title--> {% endblock %} - written in Python</title>
     <link rel="stylesheet" href="/static/css/uikit.min.css">
     <link rel="stylesheet" href="/static/css/uikit.gradient.min.css">
-    <script src="/static/js/jquery.min.js"></script>
-    <script src="/static/js/vue.min.js"></script>
-    <script src="/static/js/uikit.min.js"></script>
+    <script src="/static/js/jquery-3.1.1.js"></script>
+    <script src="/static/js/vue.js"></script>
+    <script src="/static/js/uikit.js"></script>
     <script src="/static/js/sha1.min.js"></script>
     <script src="/static/js/awesome.js"></script>
     {% block beforehead %}<!--block head--> {% endblock %}
@@ -26,7 +26,7 @@
                 <ul class="uk-navbar-nav">
                     {% if user %} <!-- 根据传递参数情况显示不同的页面内容 -->
                     <li class="uk-parent" data-uk-dropdown>
-                        <a href="#0"><i class="uk-icon-user"></i>{{ user.name }}</a>
+                        <a href="#0"><i class="uk-icon-user"></i>&nbsp;{{ user.name }}</a>
                         <div class="uk-dropdown uk-dropdown-navbar">
                             <ul class="uk-nav uk-nav-navbar"> <!-- 预留给其他用户操作？ul外总是套层div -->
                                 <li><a href="/signout"><i class="uk-icon-sign-out"></i>登出</a></li>
@@ -58,7 +58,7 @@
                     <a target="_blank" href="#" class="uk-icon-button uk-icon-linkedin-square"></a>
                     <a target="_blank" href="#" class="uk-icon-button uk-icon-twitter"></a>
                 </p>
-                <p>Powered by <a href="#">Python Webapp</a>. Copyright &copy;2016.[<a href="/manage/" target="_blank">Manage</a>]</p>
+                <p>Powered by <a href="#">Python Webapp</a>. Copyright &copy;2016.[<a href="/manage/blogs" target="_blank">Manage</a>]</p>
                 <p><a href="http://localhost:9000/" target="_blank">localhost</a>.All rights reserved.</p>
                 <a target="_blank" href="#"><i class="uk-icon-html5" style="font-size:64px; color: #444;"></i></a>
             </div>

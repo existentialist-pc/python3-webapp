@@ -65,9 +65,9 @@ class RequestHandler:
         #判断是否有未传参数
         for k, v in required_args.items():
             if k == 'request' and v.kind in (v.VAR_POSITIONAL, v.VAR_KEYWORD):
-                return web.HTTPBadRequest('requst parameter cannot be the var argument')
-            if (v.default == v.empty) and (k not in kw) and (v.kind not in (v.VAR_POSTIONAL, v.VAR_KEYWORD)):
-                return web.HTTPBadRequest('missing argument: %s' % k)
+                return web.HTTPBadRequest('requst parameter cannot be the var argument')  # 这个request在handler函数中不是多参对象，如仅位置传参list或字典传参。
+            if (v.default == v.empty) and (k not in kw) and (v.kind not in (v.VAR_POSITIONAL, v.VAR_KEYWORD)):
+                return web.HTTPBadRequest('missing argument: %s' % k)  # 缺少handler需要的必要参数。
         logging.info('call with args:%s' % str(kw))
 
         try:

@@ -7,8 +7,9 @@ from config import configs
 import hashlib
 from aiohttp import web
 import re
-from apis import APIValueError, APIResourceNotFoundError, APIError
+from apis import APIValueError, APIResourceNotFoundError, APIError, Page
 import json
+import markdown2
 
 '''
 
@@ -58,7 +59,10 @@ def cookie2user(cookie_str):
         logging.exception(e)
         return None
 
-
+def text2html(text):
+    paragraph = text.split('\n')
+    paragraph = map(lambda p:p.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;'), paragraph)  # 只表示为文本，不解析为HTML
+    return ''.join(paragraph)
 
 #@asyncio.coroutine # 调用了类的包含异步操作的方法，就要+@修饰器
 @get('/')
@@ -68,7 +72,7 @@ def index(request):
         Blog(id='1', name='Test Blog', summary=summary, created_at=time.time()-120),
         Blog(id='2', name='Something Useful', summary=summary, created_at=time.time()-3600),
         Blog(id='3', name='中文博客', summary=summary, created_at=time.time()-72000)
-    ] # name, create_at, summary
+    ] # name, created_at, summary
     #blogs = yield from Blog.findAll()
     #logging.info('执行了吗?')
     return {
@@ -76,16 +80,35 @@ def index(request):
         'blogs':blogs
     }#  return 传参要有'__template__':,'user':,'blogs':  但'GET'方法，没user
 
+@asyncio.coroutine
+@get('/blog/{id}')
+def get_blog(id):  # 日志内容以及相关的评论等
+    blog = yield from Blog.find(id)  # 没找到怎么办：传递id的操作一般为内部操作，很少出现不存在现象
+    blog.html_content = markdown2.markdown(blog.content)
+    comments = yield from Comment.findAll(where='blog_id=?', args=[id], orderBy='created_at desc')
+    if comments:
+        for comment in comments:
+            comment.html_content = text2html(comment.content)
+    return {
+        '__template__':'blog.html',
+        'blog':blog,
+        'comments':comments
+    }
+
 @get('/register')
 def register(request):
+    referer = request.headers.get('referer')  # 传递参数用于返回登录前页面
     return {
-        '__template__':'register.html'
+        '__template__':'register.html',
+        'referer':referer
     }
 
 @get('/signin')
 def signin(request):
+    referer = request.headers.get('referer')
     return  {
-        '__template__':'signin.html'
+        '__template__':'signin.html',
+        'referer':referer
     }
 
 @get('/signout')
@@ -96,9 +119,25 @@ def signout(request):  # 登录状态的本质是服务器产生或获得确认�
     logging.info('user signed out.')
     return r
 
+@get('/manage/blogs/edit')  # 命名为 删除修改留空间
+def create_blog(id=''):
+    return {
+        '__template__':'edit_blog.html',
+        'id':id,  # '001481271773179eea8a2e1a89147e4a1bc88f1ae55ba3c000',
+        'action':'/api/blogs'  # 其他传入参数
+    }
+
+@get('/manage/blogs')
+def manage_blogs(*, index=1):
+    index = int(index) if (int(index)>0) else 1
+    return {
+        '__template__':'manage_blogs.html',
+        'index':index
+    }
+
 @asyncio.coroutine
 @post('/api/authenticate')
-def api_authenticate(*, email, passwd):  # 以用户密码验证登录。当然，登录的实质是之后以cookie进入该网站。
+def api_authenticate(request, *, email, passwd):  # 以用户密码验证登录。当然，登录的实质是之后以cookie进入该网站。
     if not email or not _RE_EMAIL.match(email):
         raise APIValueError('email', 'Invalid email.')
     if not passwd or not _RE_SHA1.match(passwd):
@@ -142,3 +181,70 @@ def api_register_user(*, email, name, passwd):  # 要记得email要从原始获�
     r.content_type = 'application/json'
     r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')
     return r
+
+@asyncio.coroutine
+@post('/api/blogs')
+def api_edit_blog(request, *, name, summary, content, id=''):
+    # 验证request.__user__存在，且具有发表blog的资格。
+    if not name or not name.strip():
+        raise APIValueError('name', 'name should not be empty.')
+    if not summary or not summary.strip():
+        raise APIValueError('summary', 'summary should not be empty.')
+    if not content or not content.strip():
+        raise APIValueError('content', 'content should not be empty.')
+    if id:
+        blog = yield from Blog.find(id)
+        blog.name = name.strip()
+        blog.summary = summary.strip()
+        blog.content = content.strip()
+        yield from blog.update()
+        logging.info('Blog "%s:%s" updated.' % (blog.name, blog.id))
+    else:
+        blog = Blog(user_id=request.__user__.id, user_name=request.__user__.name, user_image=request.__user__.image,
+                name=name.strip(), summary=summary.strip(), content=content.strip())
+        yield from blog.save()
+        logging.info('Blog "%s:%s" saved.' % (blog.name, blog.id))
+    return blog
+
+@asyncio.coroutine
+@post('/api/blogs/{id}/comments')
+def api_create_comments(request, *, id, content):
+    if not content.strip():
+        raise APIValueError('content', 'comment content should not be empty.')
+    comment = Comment(blog_id=id, user_id=request.__user__.id, user_name=request.__user__.name,
+                      user_image=request.__user__.image, content=content.strip())
+    yield from comment.save()
+    logging.info('"%s"\'s comment saved. %s' % (comment.user_name, comment.id))
+    return comment
+
+@asyncio.coroutine
+@get('/api/blogs/{id}/delete')
+def api_blogs_delete(*, id):  # 需要验证权限
+    blog = yield from Blog.find(id)
+    if blog:
+        yield from blog.remove()
+        logging.info('Blog: %s removed' % blog.name)
+    return blog
+
+
+@asyncio.coroutine
+@get('/api/blogs/{id}')  # 注意这里是get方法！ 请求传递参数只有id
+def api_get_blog(*, id):
+    blog = yield from Blog.find(id)  # 没有找到怎么办：能传递id一般为内部操作，很少会在这里不存在。
+    logging.info('get Blog:%s' % blog.name)
+    return blog
+
+@asyncio.coroutine
+@get('/api/blogs')
+def api_blogs(*, index=1):  # 请求某一页，返回某一页的信息。条目，是否有上下页等。
+    index = int(index) if (int(index) > 0) else 1  # 小心传入的不是数字字符串
+    item_num = yield from Blog.findNumber('count(id)')
+    p = Page(item_num, index, 5)
+    blogs = yield from Blog.findAll(orderBy='created_at desc', limit=(p.offset, p.limit))
+    blogs = blogs if blogs else () # 如果blogs为None，循环操作会报类型错误
+    return dict(page=p, blogs=blogs)
+
+
+
+
+

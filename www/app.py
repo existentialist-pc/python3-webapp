@@ -41,7 +41,6 @@ def logger_factory(app, handler):
     @asyncio.coroutine
     def logger(request): #类似于 装饰器， 用logger把handler包装。
         logging.info('Response: %s:%s' % (request.method, request.path))
-
         return (yield from handler(request))
     return logger
 
@@ -100,6 +99,7 @@ def response_factory(app, handler):
                 resp.content_type = 'application/json;charset= utf-8'
                 return resp
             else: #调用template模板
+                rs['user'] = request.__user__
                 resp = web.Response(body = app['__templating__'].get_template(template).render(**rs).encode('utf-8'))
                 resp.content_type= 'text/html;charset=utf-8'
                 return resp
@@ -115,7 +115,8 @@ def response_factory(app, handler):
         return resp
     return response
 
-@asyncio.coroutine
+'''
+@asyncio.coroutine  # 以此方法实现，middlewares中auth_factory要放在response_factory后面
 def auth_factory(app, handler):
     @asyncio.coroutine
     def auth(request):
@@ -123,14 +124,29 @@ def auth_factory(app, handler):
         if cookies:
             user = yield from cookie2user(cookies)
             if user:
-                rs = yield from handler(request)
-                if isinstance(rs, dict):
+                rs = yield from handler(request)  # 这个添加过程应该整合在response_factory更合理，只实现判断状态其实即可。
+                if isinstance(rs, dict) and rs.get('__template__'):
                     rs['user'] = user
                     logging.info('cookie onloaded. username: %s' % user.name)
                     return rs
+                return rs
         return (yield from handler(request))
     return auth
+'''
 
+@asyncio.coroutine
+def auth_factory(app, handler):
+    @asyncio.coroutine
+    def auth(request):
+        request.__user__ = None  # 防止该变量在其他位置被占用？
+        cookies = request.cookies.get(COOKIE_NAME)
+        if cookies:
+            user = yield from cookie2user(cookies)
+            if user:
+                request.__user__ = user
+                logging.info('cookie onloaded. username: %s' % user.name)
+        return (yield from handler(request))
+    return auth
 
 def datetime_filter(t): #把整数时间解析成日常可接受形态
     delta = int(time.time()-t)
@@ -157,7 +173,7 @@ def index(request):
 def init(loop):
     yield from orm.create_pool(loop=loop ,**configs['db'])
     #核心是执行 yield from aiomysql.create_pool()
-    app = web.Application(loop=loop, middlewares=[logger_factory, response_factory, auth_factory])
+    app = web.Application(loop=loop, middlewares=[logger_factory, auth_factory, response_factory])
     init_jinja2(app, filters=dict(datetime= datetime_filter))
     #app.router.add_route('GET','/',index)
     add_routes(app,'handlers')

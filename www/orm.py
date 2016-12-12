@@ -118,12 +118,12 @@ class ModelMetaclass(type):
         for k in mappings.keys():
             attrs.pop(k)
         escaped_fields = list(map(lambda f:'`%s`' % f, fields))
-        #疯狂新建属性
+        # 疯狂新建属性
         attrs['__mappings__'] = mappings
-        attrs['__table__'] = tableName #这个防止有没定义的用实例类名
-        attrs['__primary_key__'] = primaryKey #用的key而不是v.name
-        attrs['__fields__'] = fields
-        #构造默认的SELECT, INSERT, UPDATE和DELETE语句: 关于主key的
+        attrs['__table__'] = tableName  # 这个防止有没定义的用实例类名
+        attrs['__primary_key__'] = primaryKey  # 用的key而不是v.name
+        attrs['__fields__'] = fields  # 这段以后可以修改：把primaryKey添加进去保证在最后一位。由于没添加pk，导致下面有的代码写的有点难看，要单独考虑pk
+        # 构造默认的SELECT, INSERT, UPDATE和DELETE语句: 关于主key的
         attrs['__select__'] = 'select `%s`, %s from `%s`' % (primaryKey, ', '.join(escaped_fields), tableName)
         attrs['__update__'] = 'update `%s` set %s where `%s`=?' % (tableName, ','.join(list(map(lambda f: '`%s`=?' % (mappings.get(f).name or f), fields))), primaryKey)
         attrs['__delete__'] = 'delete from `%s` where `%s`=?' % (tableName, primaryKey)
@@ -160,17 +160,17 @@ class Model(dict, metaclass= ModelMetaclass):
 
     @classmethod
     @asyncio.coroutine
-    def find(cls, pk): #找到主键pk对应key输出的结果
-        ' find object by primary key. '
+    def find(cls, pk): # 找到主键pk对应key输出的结果
+        """ find object by primary key. """
         rs = yield from select('%s where `%s`=?' % (cls.__select__, cls.__primary_key__), [pk], 1)
         if len(rs) == 0:
             return None
-        return cls(**rs[0])  #把字典变为 a=b,c=d 格式。dict默认显示
+        return cls(**rs[0])  # 把字典变为 a=b,c=d 格式。dict默认显示
 
     @classmethod
     @asyncio.coroutine
     def findNumber(cls, selectField, where= None, args= None):  # 找到select count(*) from 表名输出的结果
-        ' find quantity of search result by select and where. selectField 要输出的列 where判断语句 arg：where中?替换的值'
+        """ find quantity of search result by select and where. selectField 要输出的列 where判断语句 arg：where中?替换的值 """
         sql = ['select %s _num_ from `%s`' % (selectField, cls.__table__)]
         if where:
             sql.append('where')
@@ -178,12 +178,12 @@ class Model(dict, metaclass= ModelMetaclass):
         rs = yield from select(' '.join(sql), args, 1) #注意，没where就没args
         if len(rs) == 0:
             return None
-        return rs[0]['_num_'] #试试
+        return rs[0]['_num_']
 
     @classmethod
     @asyncio.coroutine
     def findAll(cls, where= None, args= None, **kw):
-        ' find objects by where clause. 输出多个结果。 **kw为附加 orderBy limit等 SQL命令'
+        """ find objects by where clause. 输出多个结果。 **kw为附加 orderBy limit等 SQL命令"""
         sql = [cls.__select__]
         if where:
             sql.append('where')
@@ -210,7 +210,7 @@ class Model(dict, metaclass= ModelMetaclass):
 
     @asyncio.coroutine
     def save(self):
-        args = list(map(self.getValueOrDefault, self.__fields__))
+        args = list(map(self.getValueOrDefault, self.__fields__))  #此时会对新建默认值
         args.append(self.getValueOrDefault(self.__primary_key__))
         rs = yield from execute(self.__insert__, args)
         if rs != 1:
@@ -218,7 +218,7 @@ class Model(dict, metaclass= ModelMetaclass):
 
     @asyncio.coroutine
     def update(self):
-        args = list(map(self.getValue, self.__fields__))
+        args = list(map(self.getValue, self.__fields__))  # 为了防止出现匹配不成功，此处不能随意创建默认值
         args.append(self.getValue(self.__primary_key__))
         rs = yield from execute(self.__update__, args)
         if rs != 1:
