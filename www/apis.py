@@ -1,4 +1,4 @@
-import logging
+import logging, json
 
 class Page():  # 思考函数的类化
 
@@ -17,8 +17,9 @@ class Page():  # 思考函数的类化
         self.has_previous = self.page_index > 1
 
     def __str__(self):
-        return ('item_num:%s, page_num:%s, page_index:%s, items_per_page:%s, offset:%s, limit:%s' %
-                (self.item_num, self.page_num, self.page_index, self.items_per_page, self.offset, self.limit))
+        return str(json.dumps(self.__dict__.copy()))
+    #   return ('item_num:%s, page_num:%s, page_index:%s, items_per_page:%s, offset:%s, limit:%s' %
+    #            (self.item_num, self.page_num, self.page_index, self.items_per_page, self.offset, self.limit))
 
     __repr__ = __str__
 

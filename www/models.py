@@ -6,7 +6,7 @@ from orm import Model, StringField, IntegerField, BooleanField, FloatField, Text
 def next_id():
     return '%015d%s000' % (int(time.time()*1000), uuid.uuid4().hex)  # %015d 15位整数不足用0填充 return凑齐50位字符串，十六进制数
 
-class User(Model):
+class User(Model):  # 类对象
 
     __table__ = 'users'
 

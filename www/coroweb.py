@@ -88,7 +88,7 @@ def add_routes(app, module_name): #把所有的路由处理函数和地址联系
             return web.HTTPBadRequest('module %s:%s not found!' % (module_name, sub_name))
     '''
     mod = __import__(module_name,fromlist=['this_is_for_valid_import_module_name'])
-    for attr in dir(mod): #dir(mod)只获得mod的属性方法等字符串名字list，不获得方法本身！
+    for attr in dir(mod): # dir(mod)只获得mod的属性方法等字符串类型的名字list，不获得方法本身！
         if not attr.startswith('_'):
             fn = getattr(mod, attr)  #获得方法本身
             if callable(fn) and hasattr(fn, '__method__') and hasattr(fn, '__method__'):

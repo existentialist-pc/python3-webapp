@@ -63,24 +63,24 @@
 {% endblock %}
 
 {% block content %}
-<!--
-    <div class="uk-width-1-1 uk-margin-bottom">
-        <div class="uk-panel uk-panel-box">
+
+<div class="uk-width-1-1 uk-margin-bottom">
+        <div class="uk-panel uk-panel-box uk-margin">
             <ul class="uk-breadcrumb">
-                <li><a href="/manage/comments">评论</a></li>
                 <li><a href="/manage/blogs">日志</a></li>
+                <li><a href="/manage/comments">评论</a></li>
                 <li><a href="/manage/users">用户</a></li>
             </ul>
         </div>
-    </div>
+
 
     <div id="error" class="uk-width-1-1"></div>
 
     <div id="loading" class="uk-width-1-1 uk-text-center">
         <span><i class="uk-icon-spinner uk-icon-medium uk-icon-spin"></i>正在加载...</span>
     </div>
--->
-    <div class="uk-width-2-3">
+
+    <div class="uk-width-2-3 uk-margin-top">
         <h1>新建/修改日志</h1>
         <form id="vm" v-on:submit="submit" class="uk-form uk-form-stacked">
             <div class="uk-alert uk-alert-danger uk-hidden"></div>
@@ -108,5 +108,6 @@
             </div>
         </form>
     </div>
+</div>
 
 {% endblock %}

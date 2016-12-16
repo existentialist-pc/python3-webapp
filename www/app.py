@@ -100,7 +100,7 @@ def response_factory(app, handler):
                 return resp
             else: #调用template模板
                 rs['user'] = request.__user__
-                resp = web.Response(body = app['__templating__'].get_template(template).render(**rs).encode('utf-8'))
+                resp = web.Response(body = app['__templating__'].get_template(template).render(**rs).encode('utf-8'))  # .render对字典传参进行渲染
                 resp.content_type= 'text/html;charset=utf-8'
                 return resp
         if isinstance(rs, int) and 100<= rs<=600:
@@ -145,6 +145,8 @@ def auth_factory(app, handler):
             if user:
                 request.__user__ = user
                 logging.info('cookie onloaded. username: %s' % user.name)
+        if request.path.startswith('/manage/') and(not getattr(request.__user__,'admin',None)):
+            return web.HTTPFound('/')
         return (yield from handler(request))
     return auth
 

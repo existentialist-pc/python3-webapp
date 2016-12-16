@@ -73,8 +73,8 @@
                         <h4 class="uk-comment-title">{{ comment.user_name }}</h4>
                         <p class="uk-comment-meta">{{ comment.created_at|datetime }}</p>
                     </header>
-                    <div class="uk-comment-body"> <!-- 提交的comment会自动包含格式吗？ -->
-                        {{ comment.html_content|safe }}
+                    <div class="uk-comment-body"> <!-- 提交的comment会自动包含格式吗？ 会将格式保留并进行html转义（\n葫芦等），如果后端不干预-->
+                        {{ comment.html_content |safe}}
                     </div>
                 </article>
             </li>

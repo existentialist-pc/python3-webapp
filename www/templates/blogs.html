@@ -3,18 +3,55 @@
 
 {% block title %}日志{% endblock %}
 
+{% block beforehead %}
+
+    <script>
+
+        var page =  {{ page|safe }};
+        var blogs = {{ blogs|safe }};
+
+        function initVM(results){
+            var vm = new Vue({
+                el:'#vm',
+                data:{
+                    page:results.page,
+                    blogs:results.blogs
+                }
+            });
+        }
+        $(function(){
+            $('#loading').hide();
+            initVM({page:page,blogs:blogs});
+        })
+
+
+    </script>
+
+{% endblock %}
+
 {% block content %}
 
-    <div class="uk-width-medium-3-4">
-        {% for blog in blogs %}
-        <article class="uk-article">
-            <h2><a href="/blog/{{ blog.id }}" target="_blank">{{ blog.name }}</a></h2>
-            <p class="uk-article-meta">发表于：{{ blog.created_at|datetime }}</p>
-            <p>{{ blog.summary }}</p>
-            <p><a href="/blog/{{ blog.id }}">继续阅读<i class="uk-icon-angle-double-right"></i></a></p>
+    <div id="vm" class="uk-width-medium-3-4">
+        <div id="loading" class="uk-width-1-1 uk-text-center">
+            <span><i class="uk-icon-spinner uk-icon-medium uk-icon-spin"></i> 正在加载...</span>
+        </div>
+        <article class="uk-article" v-for="blog in blogs">
+            <h2><a :href="'/blog/'+ blog.id" target="_blank" v-text="blog.name"></a></h2>
+            <p class="uk-article-meta" v-text="'发表于：'+ blog.created_at.toDateTime()"></p>
+            <p v-text="blog.summary"></p>
+            <p><a :href="'/blog/'+ blog.id">继续阅读<i class="uk-icon-angle-double-right"></i></a></p>
         </article>
         <hr class="uk-article-divider">
-        {% endfor %}
+
+        <nav class="uk-margin-top">
+            <ul class="uk-pagination">
+                <li v-if="page.has_previous"><a :href="'/?index='+(page.page_index-1)"><i class="uk-icon-angle-double-left"></i></a></li>
+                <li v-else class="uk-disabled"><span><i class="uk-icon-angle-double-left"></i></span></li>
+                <li class="uk-active"><span v-text="page.page_index"></span></li>
+                <li v-if="page.has_next"><a :href="'/?index='+(page.page_index+1)"><i class="uk-icon-angle-double-right"></i></a></li>
+                <li v-else class="uk-disabled"><span><i class="uk-icon-angle-double-right"></i></span></li>
+            </ul>
+        </nav>
     </div>
 
     <div class="uk-width-medium-1-4">
