@@ -3,8 +3,10 @@
 import time, uuid
 from orm import Model, StringField, IntegerField, BooleanField, FloatField, TextField
 
+
 def next_id():
     return '%015d%s000' % (int(time.time()*1000), uuid.uuid4().hex)  # %015d 15位整数不足用0填充 return凑齐50位字符串，十六进制数
+
 
 class User(Model):  # 类对象
 
@@ -16,7 +18,8 @@ class User(Model):  # 类对象
     admin = BooleanField(default = False)
     name = StringField(ddl='varchar(50)')
     image = StringField(ddl='varchar(500)')
-    created_at = FloatField(default=time.time) # 保存到数据库的时候调用。save函数内的getValueOrDefault内 会执行default()。
+    created_at = FloatField(default=time.time)  # 保存到数据库的时候调用。save函数内的getValueOrDefault内 会执行default()。
+
 
 class Blog(Model):
 
@@ -30,6 +33,7 @@ class Blog(Model):
     summary = StringField(ddl='varchar(200)')
     content = TextField()
     created_at = FloatField(default=time.time)
+
 
 class Comment(Model):
 

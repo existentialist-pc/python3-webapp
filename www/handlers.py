@@ -75,6 +75,7 @@ def get_model(sql_model):  # 以函数的形式实现类查询
             if not attr.startswith('_') and (sql_model == (getattr(getattr(mod,attr), '__table__', None) or attr)):
                 return getattr(mod,attr)
 
+
 @asyncio.coroutine
 def check_admin(request):
     if not (request.__user__ and request.__user__.admin):
@@ -82,9 +83,7 @@ def check_admin(request):
 
 
 
-
-
-@asyncio.coroutine # 调用了类的包含异步操作的方法，就要+@修饰器
+@asyncio.coroutine  # 调用了类的包含异步操作的方法，就要+@修饰器
 @get('/')
 def index(request, *, index=1):
     index = int(index) if (int(index) > 0) else 1  # 小心传入的不是数字字符串
@@ -96,7 +95,7 @@ def index(request, *, index=1):
         '__template__':'blogs.html',
         'blogs':blogs,
         'page':p
-    }#  return 传参要有'__template__':,'user':,'blogs':  但'GET'方法，没user
+    }  # return 传参要有'__template__':,'user':,'blogs':  但'GET'方法，没user
 
 
 @asyncio.coroutine
@@ -126,7 +125,7 @@ def register(request):
 @get('/signin')
 def signin(request):
     referer = request.headers.get('referer')
-    return  {
+    return {
         '__template__':'signin.html',
         'referer':referer
     }
@@ -151,7 +150,7 @@ def create_blog(id=''):
 
 
 @get('/manage/{sql_model}')
-def manage_blogs(*,sql_model, index=1):
+def manage_blogs(*, sql_model, index=1):
     index = int(index) if (int(index)>0) else 1
     return {
         '__template__':'manage_%s.html' %sql_model,
@@ -271,7 +270,7 @@ def api_blogs_delete(request, *, sql_model, id):  # 需要验证权限
 @get('/api/{sql_model}')  # 请求某一页，返回某一页的数据库信息。条目，是否有上下页等。
 def api_blogs(request, *, sql_model, index=1):
     check_admin(request)
-    SQLModel = get_model(sql_model)# 新建一个识别models中所有model类的函数
+    SQLModel = get_model(sql_model)  # 新建一个识别models中所有model类的函数
     if SQLModel is None:
         raise AttributeError
     index = int(index) if (int(index) > 0) else 1  # 小心传入的不是数字字符串

@@ -6,9 +6,10 @@ import logging
 import urllib.parse
 import asyncio
 from aiohttp import web
-#from apis import APIError
+from apis import APIError
 
-def request_type(method):  #用工厂模式，生成GET、POST等请求方法的装饰器
+
+def request_type(method):  # 用工厂模式，生成GET、POST等请求方法的装饰器
     def _request(path):
         def decorator(func):
             @functools.wraps(func)
@@ -25,11 +26,12 @@ post = request_type('POST')
 put = request_type('PUT')
 delete = request_type('DELETE')
 
+
 class RequestHandler:
 
     def __init__(self, app, fn):
         self._app = app
-        self._fn = asyncio.coroutine(fn) #疑问，fn = asyncio.coroutine(fn) 可以放在这里吗？可以哈。
+        self._fn = asyncio.coroutine(fn)  # 疑问，fn = asyncio.coroutine(fn) 可以放在这里吗？可以哈。
 
     @asyncio.coroutine
     def __call__(self, request):
@@ -50,19 +52,19 @@ class RequestHandler:
         if request.method == 'GET':
             qs = request.query_string
             if qs:
-                for k, v in urllib.parse.parse_qs(qs,True).items(): #v是list类型
+                for k, v in urllib.parse.parse_qs(qs,True).items():  # v是list类型，将query_string参数获取
                     req_kw[k] = v[0]
 
-        #是否有特殊传参数
-        if request.match_info:  #如果和以上有相同的key会更新。
+        # 是否有特殊传参数
+        if request.match_info:  # 如果和以上有相同的key会更新。
             req_kw.update(request.match_info)
         req_kw['request'] = request
 
-        #根据需要传参
+        # 根据需要传参
         required_args = inspect.signature(self._fn).parameters
         kw = {arg: value for arg, value in req_kw.items() if arg in required_args}
 
-        #判断是否有未传参数
+        # 判断是否有未传参数
         for k, v in required_args.items():
             if k == 'request' and v.kind in (v.VAR_POSITIONAL, v.VAR_KEYWORD):
                 return web.HTTPBadRequest('requst parameter cannot be the var argument')  # 这个request在handler函数中不是多参对象，如仅位置传参list或字典传参。
@@ -73,11 +75,12 @@ class RequestHandler:
         try:
             rs = yield from self._fn(**kw)  # 这里执行handlers，获得结果返回
             return rs
-        except:# APIError as e:
-            return 0 #dict(error = e.error, data = e.data, message = e.message)
+        except APIError as e:  # 如果handler运行结果为抛出错误，返回错误信息！ 很重要，实现了handler函数中自动抛出错误跳出并传递信息。
+            return dict(error=e.error, data=e.data, message=e.message)
 
-def add_routes(app, module_name): #把所有的路由处理函数和地址联系起来。所以需要__import__。（需要装载的moodule位置 ）
-    ''' #该方法核心思想：如果不是A.B格式，直接读该文件；如果是A.B则__import__一定要包含fromlist！保证引入name成功。然后引入调用到最后的B文件
+
+def add_routes(app, module_name):  # 把所有的路由处理函数和地址联系起来。所以需要__import__。（需要装载的moodule位置 ）
+    '''  # 该方法核心思想：如果不是A.B格式，直接读该文件；如果是A.B则__import__一定要包含fromlist！保证引入name成功。然后引入调用到最后的B文件
     n = module_name.rfind('.')
     if n = -1:
         mod = __import__(module_name)
@@ -88,18 +91,19 @@ def add_routes(app, module_name): #把所有的路由处理函数和地址联系
             return web.HTTPBadRequest('module %s:%s not found!' % (module_name, sub_name))
     '''
     mod = __import__(module_name,fromlist=['this_is_for_valid_import_module_name'])
-    for attr in dir(mod): # dir(mod)只获得mod的属性方法等字符串类型的名字list，不获得方法本身！
+    for attr in dir(mod):  # dir(mod)只获得mod的属性方法等字符串类型的名字list，不获得方法本身！
         if not attr.startswith('_'):
-            fn = getattr(mod, attr)  #获得方法本身
+            fn = getattr(mod, attr)  # 获得方法本身
             if callable(fn) and hasattr(fn, '__method__') and hasattr(fn, '__method__'):
-                method = getattr(fn, '__method__', None) #不要使用 fn.__method__暴力调用！
+                method = getattr(fn, '__method__', None)  # 不要使用 fn.__method__暴力调用！
                 path = getattr(fn, '__route__', None)
                 app.router.add_route(method, path, RequestHandler(app,fn))
                 args = ','.join(inspect.signature(fn).parameters.keys())
                 logging.info('add route %s %s => %s(%s)' % (method, path, fn.__name__, args))
 
-def add_static(app): #不传需要的参数,以本文件路径 为基准 找到 static配置文件位置。
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'static') #根据该文件位置修改。 getcwd()不能传参！
+
+def add_static(app):  # 不传需要的参数,以本文件路径 为基准 找到 static配置文件位置。
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'static')  # 根据该文件位置修改。 getcwd()不能传参！
     app.router.add_static('/static/', path)
     logging.info('add static %s => %s' % ('/static/', path))
 

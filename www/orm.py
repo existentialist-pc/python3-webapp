@@ -5,7 +5,7 @@ import asyncio,aiomysql
 
 
 @asyncio.coroutine
-def create_pool(loop, **kw): #只创建 global变量 不返回   init 中直接调用！
+def create_pool(loop, **kw):  # 只创建 global变量 不返回  init 中直接调用！
     logging.info('create database connection pool...')
     global __pool
     __pool = yield from aiomysql.create_pool(
@@ -15,17 +15,18 @@ def create_pool(loop, **kw): #只创建 global变量 不返回   init 中直接�
         password=kw['password'],
         db=kw['db'],
         charset=kw.get('charset', 'utf8'),
-        autocommit=kw.get('autocommit', True), #这里就不用定义 conn.commit()
+        autocommit=kw.get('autocommit', True),  # 这里就不用定义 conn.commit()
         maxsize=kw.get('maxsize', 10),
         minsize=kw.get('minsize', 1),
         loop=loop
     )
 
+
 @asyncio.coroutine
-def select(sql, args= None, size= None): #查询
+def select(sql, args=None, size=None):  # 查询
     logging.info("SQL:'%s' args:'%s'" % (sql, args or []))
     with (yield from __pool) as conn:
-        cur = yield from conn.cursor(aiomysql.DictCursor) #字典格式返回
+        cur = yield from conn.cursor(aiomysql.DictCursor)  # 字典格式返回
         yield from cur.execute(sql.replace('?', '%s'), args or ())
         if size:
             rs = yield from cur.fetchmany(size)
@@ -37,19 +38,19 @@ def select(sql, args= None, size= None): #查询
 
 
 @asyncio.coroutine
-def execute(sql, args= None, autocommit= True): #传参 autocommit=True 控制 提交方式。
+def execute(sql, args=None, autocommit=True):  # 传参 autocommit=True 控制 提交方式。
     logging.info("SQL:'%s' args:'%s'" % (sql, args or []))
     with (yield from __pool) as conn:
         if not autocommit:
-            yield from conn.begin() #?有这个语法？
+            yield from conn.begin()  # 这个语法
         try:
             cur = yield from conn.cursor()
             yield from cur.execute(sql.replace('?', '%s'), args or ())
-            affected = cur.rowcount #返回受影响的行数值
+            affected = cur.rowcount  # 返回受影响的行数值
             if not autocommit:
                 yield from conn.commit()
         except BaseException as e:
-            yield from conn.rollback() #不知道有没有这个
+            yield from conn.rollback()  # 这个语法
             raise e
         yield from cur.close()
     return affected
@@ -65,39 +66,45 @@ class Field(object):
         self.default = default
 
     def __str__(self):
-        return  '<%s, %s:%s>' % (self.__class__.__name__, self.column_type, self.name)
+        return '<%s, %s:%s>' % (self.__class__.__name__, self.column_type, self.name)
+
 
 class StringField(Field):
 
-    def __init__(self, name = None, ddl = 'varchar(100)', primary_key = False, default = ''):
+    def __init__(self, name=None, ddl='varchar(100)', primary_key=False, default=''):
         super().__init__(name, ddl, primary_key, default)
+
 
 class IntegerField(Field):
 
-    def __init__(self, name = None, ddl = 'bigint(10)', primary_key = False, default = 0):
+    def __init__(self, name=None, ddl='bigint(10)', primary_key=False, default=0):
         super().__init__(name, ddl, primary_key, default)
+
 
 class BooleanField(Field):
 
-    def __init__(self, name = None, ddl = 'boolean', default = False):
+    def __init__(self, name=None, ddl='boolean', default=False):
         super().__init__(name, ddl, False, default)
+
 
 class FloatField(Field):
 
-    def __init__(self, name = None, ddl = 'real', primary_key = False, default = 0.0):
+    def __init__(self, name=None, ddl='real', primary_key=False, default=0.0):
         super().__init__(name, ddl, primary_key, default)
+
 
 class TextField(Field):
 
-    def __init__(self, name = None, ddl = 'text', default = ''):
+    def __init__(self, name=None, ddl='text', default=''):
         super().__init__(name, ddl, False, default)
+
 
 class ModelMetaclass(type):
 
     def __new__(cls, name, bases, attrs):
         if name == 'Model':
             return type.__new__(cls, name, bases, attrs)
-        tableName = attrs.get('__table__', None) or name # 便于dict中找不到返回None,所以不采用 attrs['__table__']
+        tableName = attrs.get('__table__', None) or name  # 便于dict中找不到返回None,所以不采用 attrs['__table__']
         logging.info('found model: %s (table: %s)' % (name,tableName))
 
         mappings = dict()
@@ -154,7 +161,7 @@ class Model(dict, metaclass= ModelMetaclass):
             field = self.__mappings__[key]
             if field.default is not None:
                 value = field.default() if callable(field.default) else field.default
-                logging.debug('using default value for %s：%s' % (key,str(value))) #防止value是 迭代类型？
+                logging.debug('using default value for %s：%s' % (key,str(value)))  # 防止value是 迭代类型？
                 setattr(self, key, value)
         return value
 
@@ -169,13 +176,13 @@ class Model(dict, metaclass= ModelMetaclass):
 
     @classmethod
     @asyncio.coroutine
-    def findNumber(cls, selectField, where= None, args= None):  # 找到select count(*) from 表名输出的结果
+    def findNumber(cls, selectField, where=None, args=None):  # 找到select count(*) from 表名输出的结果
         """ find quantity of search result by select and where. selectField 要输出的列 where判断语句 arg：where中?替换的值 """
         sql = ['select %s _num_ from `%s`' % (selectField, cls.__table__)]
         if where:
             sql.append('where')
             sql.append(where)
-        rs = yield from select(' '.join(sql), args, 1) #注意，没where就没args
+        rs = yield from select(' '.join(sql), args, 1)  # 注意，没where就没args
         if len(rs) == 0:
             return None
         return rs[0]['_num_']
@@ -192,7 +199,7 @@ class Model(dict, metaclass= ModelMetaclass):
         if orderBy:
             sql.append('order by')
             sql.append(orderBy)
-        if args is None:  #为什么要limit作为参 传参进sql语句，而不是直接加上？ 为了语句的通用性？
+        if args is None:  # 为什么要limit作为参 传参进sql语句，而不是直接加上？ 为了语句的通用性？
             args = []
         limit = kw.get('limit', None)
         if limit is not None:
@@ -202,15 +209,15 @@ class Model(dict, metaclass= ModelMetaclass):
                 args.append(limit)
             elif isinstance(limit,tuple):
                 sql.append('?,?')
-                args.extend(limit)  #要用extend！！
+                args.extend(limit)  # 要用extend！！
             else:
-                raise ValueError('Invalid limit value: %s' % str(limit)) #防止limit是tuple出错
+                raise ValueError('Invalid limit value: %s' % str(limit))  # 防止limit是tuple出错
         rs = yield from select(' '.join(sql), args)
         return [cls(**r) for r in rs]  # 如果 rs为[]则 该值也返回[],不能加None判断，如果加，后续len(None)python会报错。
 
     @asyncio.coroutine
     def save(self):
-        args = list(map(self.getValueOrDefault, self.__fields__))  #此时会对新建默认值
+        args = list(map(self.getValueOrDefault, self.__fields__))  # 此时会对新建默认值
         args.append(self.getValueOrDefault(self.__primary_key__))
         rs = yield from execute(self.__insert__, args)
         if rs != 1:
